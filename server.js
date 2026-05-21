@@ -243,7 +243,8 @@ async function getValuesWithImages() {
 
 function cleanAssistantQuery(message) {
   return normalizeText(message)
-    .replace(/\b(what|is|the|and|value|rap|price|of|for|a|an|how|much|worth|tell|me|about|please|show|find|does|it|cost|stock|chart|history|trend|current|past|future)\b/g, " ")
+    .replace(/\b(yo|i|found|find|should|buy|purchase|worth|deal|booth|seller|selling|what|is|the|and|value|rap|price|of|for|a|an|how|much|worth|tell|me|about|please|show|does|it|cost|stock|chart|history|trend|current|past|future)\b/g, " ")
+    .replace(/\b\d+(?:\.\d+)?\s*(?:k|m|b|t)?\b/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -252,7 +253,8 @@ const assistantIntentWords = [
   "cheap", "cheapest", "lowest", "low", "top", "highest", "best", "expensive",
   "huge", "huges", "titanic", "titanics", "rainbow", "golden", "shiny",
   "mutation", "mutations", "variant", "variants", "history", "trend", "chart",
-  "stock", "rising", "falling", "up", "down"
+  "stock", "rising", "falling", "up", "down", "found", "buy", "should",
+  "deal", "booth", "profit", "skip"
 ];
 
 const assistantTypoAliases = new Map(Object.entries({
@@ -392,6 +394,28 @@ function predictValueFromHistory(history) {
   };
 }
 
+function parseDiamondAmount(message) {
+  const normalized = String(message || "").toLowerCase().replace(/,/g, "");
+  const match = normalized.match(/\b(\d+(?:\.\d+)?)\s*(t|tril|trillion|b|bil|billion|m|mil|million|k|thousand)?\b/);
+  if (!match) return null;
+
+  const amount = Number(match[1]);
+  if (!Number.isFinite(amount)) return null;
+
+  const suffix = match[2] || "";
+  const multiplier = suffix.startsWith("t")
+    ? 1000000000000
+    : suffix.startsWith("b")
+      ? 1000000000
+      : suffix.startsWith("m")
+        ? 1000000
+        : suffix.startsWith("k") || suffix.startsWith("thousand")
+          ? 1000
+          : 1;
+
+  return Math.round(amount * multiplier);
+}
+
 async function answerValueQuestion(message) {
   const text = String(message || "").trim();
   const valuesResult = await getValuesWithImages();
@@ -402,6 +426,8 @@ async function answerValueQuestion(message) {
   const wantsHuge = /\bhuge|huges\b/.test(normalized);
   const wantsTitanic = /\btitanic|titanics\b/.test(normalized);
   const wantsSpecificMutation = /\b(golden|rainbow|shiny|chroma)\b/.test(normalized);
+  const offeredPrice = parseDiamondAmount(text);
+  const wantsDealCheck = offeredPrice && /\b(should|buy|deal|profit|worth|found|booth|seller|selling)\b/.test(normalized);
   const requestedLimit = Math.max(1, Math.min(Number(normalized.match(/\btop\s+(\d+)\b/)?.[1] || normalized.match(/\b(\d+)\b/)?.[1] || 8), 20));
 
   if (wantsCheapest && wantsHuge) {
@@ -448,7 +474,8 @@ async function answerValueQuestion(message) {
 
   const query = cleanAssistantQuery(normalized) || normalized;
   const baseQuery = query
-    .replace(/\b(cheap|cheapest|lowest|least expensive|low|regular|golden|rainbow|shiny|stock|chart|history|trend|current|past|future|value|rap|price|and)\b/g, " ")
+    .replace(/\b(cheap|cheapest|lowest|least expensive|low|regular|golden|rainbow|shiny|stock|chart|history|trend|current|past|future|value|rap|price|and|yo|i|found|find|should|buy|purchase|worth|deal|booth|seller|selling|profit|skip)\b/g, " ")
+    .replace(/\b\d+(?:\.\d+)?\s*(?:k|m|b|t)?\b/g, " ")
     .replace(/\s+/g, " ")
     .trim();
   const matches = valuesResult.items
@@ -500,6 +527,21 @@ async function answerValueQuestion(message) {
     : !wantsSpecificMutation && regularFamilyMatch
       ? regularFamilyMatch
     : exactMatch;
+
+  if (wantsDealCheck) {
+    const profit = selected.value - offeredPrice;
+    const profitPercent = offeredPrice ? profit / offeredPrice * 100 : 0;
+    const decision = profit > selected.value * 0.08 ? "Buy it" : profit > 0 ? "Maybe buy it" : "Skip it";
+    const reason = profit >= 0
+      ? `That is ${profit.toLocaleString()} diamonds under RAP (${profitPercent.toFixed(1)}% potential margin).`
+      : `That is ${Math.abs(profit).toLocaleString()} diamonds over RAP.`;
+
+    return {
+      answer: `${correction.didCorrect ? `I read that as "${normalized}". ` : ""}${decision}: ${selected.name} RAP is ${selected.value.toLocaleString()} and the booth price is ${offeredPrice.toLocaleString()}. ${reason}`,
+      cards: [selected],
+      historyUrl: `/item/${encodeURIComponent(selected.baseName)}`
+    };
+  }
 
   if (/\b(mutation|mutations|variant|variants)\b/.test(normalized)) {
     const variants = valuesResult.items
