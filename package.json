@@ -1,0 +1,20 @@
+{
+  "name": "ps99-server-sniper",
+  "version": "1.0.0",
+  "description": "A small PS99 Trading Plaza server scout and deal calculator.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "roblox",
+    "ps99",
+    "pet-simulator-99"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  }
+}

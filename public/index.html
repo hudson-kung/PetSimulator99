@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>PS99 Server Sniper</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <header class="site-nav">
+      <a class="brand" href="/" data-page-link="home" aria-label="PS99 Server Sniper home">
+        <span class="brand-mark">99</span>
+        <span>PS99 Sniper</span>
+      </a>
+      <nav aria-label="Primary navigation">
+        <a href="/values" data-page-link="values">Values</a>
+        <a href="/assistant" data-page-link="assistant">Assistant</a>
+        <a href="/servers" data-page-link="servers">Servers</a>
+        <a href="/how" data-page-link="how">How It Works</a>
+      </nav>
+    </header>
+
+    <main class="shell">
+      <section id="home" class="hero page" data-page="home">
+        <div>
+          <p class="eyebrow">Pet Simulator 99 Trading Plaza</p>
+          <h1>PS99 Server Sniper</h1>
+          <p class="hero-copy">Browse official PS99 RAP values, check item variants, and hop into active Trading Plaza servers from one clean page.</p>
+          <div class="hero-actions">
+            <a class="primary cta" href="/values" data-page-link="values">Browse values</a>
+            <a class="ghost cta" href="/servers" data-page-link="servers">Find servers</a>
+          </div>
+        </div>
+        <div class="hero-stat">
+          <span id="lastUpdated">Not loaded</span>
+          <strong id="serverCount">0 servers</strong>
+        </div>
+      </section>
+
+      <section id="how" class="home-strip page" data-page="how" aria-label="How the sniper works">
+        <article>
+          <strong>1. Search item</strong>
+          <span>Pick the exact RAP match, including shiny, golden, rainbow, or tier.</span>
+        </article>
+        <article>
+          <strong>2. Check RAP</strong>
+          <span>Use the values list beside the server hopper while you inspect booths.</span>
+        </article>
+        <article>
+          <strong>3. Compare price</strong>
+          <span>Compare booth prices in-game against the RAP list before buying.</span>
+        </article>
+      </section>
+
+      <section class="notice">
+        Roblox still does not publish live booth prices through a web API. This page keeps the official BIG Games RAP list handy while you check booths in-game.
+      </section>
+
+      <section id="serversPage" class="page" data-page="servers">
+        <section class="toolbar" aria-label="Server controls">
+          <label>
+            Place ID
+            <input id="placeId" value="15502339080" inputmode="numeric" aria-label="Roblox place id">
+          </label>
+          <label>
+            Pages
+            <select id="pages" aria-label="Pages to scan">
+              <option value="1" selected>100 servers</option>
+              <option value="2">200 servers</option>
+              <option value="3">300 servers</option>
+              <option value="5">500 servers</option>
+            </select>
+          </label>
+          <label>
+            Min open slots
+            <input id="minSlots" type="number" min="0" max="50" value="1" aria-label="Minimum open slots">
+          </label>
+          <button id="refreshButton" class="primary">Refresh servers</button>
+        </section>
+
+        <section id="servers" class="panel server-page-panel">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">Optional</p>
+              <h2>Server hopper</h2>
+            </div>
+            <input id="serverSearch" placeholder="Filter by server id" aria-label="Filter servers">
+          </div>
+          <div id="status" class="status">Press refresh to load servers.</div>
+          <div id="serverList" class="server-list" aria-live="polite"></div>
+        </section>
+      </section>
+
+      <section id="valuesPage" class="page" data-page="values">
+        <aside id="sniper" class="panel values-page-panel">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">Values</p>
+              <h2>Pet RAP catalog</h2>
+            </div>
+          </div>
+
+          <form id="dealForm" class="deal-form value-browser-form">
+            <label>
+              Search item
+              <input id="itemName" placeholder="Huge, charm, enchant..." autocomplete="off" required>
+            </label>
+            <button class="primary" type="submit">Search values</button>
+          </form>
+
+          <div id="selectedValue" class="selected-value">Loading RAP values...</div>
+          <div class="pager" aria-label="Value pages">
+            <button id="prevValues" class="ghost" type="button">Previous</button>
+            <span id="valuePageInfo">Page 1</span>
+            <button id="nextValues" class="ghost" type="button">Next</button>
+          </div>
+          <div id="valueResults" class="value-results value-list"></div>
+        </aside>
+      </section>
+
+      <section id="itemPage" class="page" data-page="item">
+        <article class="panel item-detail-panel">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">Price history</p>
+              <h2 id="itemDetailTitle">Pet detail</h2>
+            </div>
+            <a class="ghost cta" href="/values" data-page-link="values">Back to values</a>
+          </div>
+          <div id="mutationPanel" class="mutation-panel"></div>
+        </article>
+      </section>
+
+      <section id="assistantPage" class="page" data-page="assistant">
+        <article class="panel assistant-panel">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">Value assistant</p>
+              <h2>Ask about PS99 values</h2>
+            </div>
+          </div>
+          <div id="assistantMessages" class="assistant-messages">
+            <div class="assistant-message bot">
+              Ask me things like “value of Huge Hot Cocoa Bear”, “is Huge Pop Cat going up?”, or “show mutations for Huge Hot Cocoa Bear”.
+            </div>
+          </div>
+          <form id="assistantForm" class="assistant-form">
+            <input id="assistantInput" placeholder="Ask about a pet or item value..." autocomplete="off">
+            <button class="primary" type="submit">Ask</button>
+          </form>
+        </article>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
