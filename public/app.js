@@ -8,7 +8,8 @@ const state = {
   valuePageSize: 48,
   selectedPet: null,
   mutations: [],
-  selectedMutationName: ""
+  selectedMutationName: "",
+  itemLoadId: 0
 };
 
 const elements = {
@@ -67,8 +68,11 @@ elements.nextValues.addEventListener("click", () => {
 elements.assistantForm.addEventListener("submit", askAssistant);
 
 loadValueStats();
-showPage(pageFromPath(location.pathname));
-searchValues("");
+const initialPage = pageFromPath(location.pathname);
+showPage(initialPage);
+if (initialPage === "values") {
+  searchValues("");
+}
 
 async function refreshServers() {
   elements.refreshButton.disabled = true;
@@ -134,6 +138,10 @@ function showPage(pageName) {
 
   if (pageName === "item") {
     const petName = decodeURIComponent(location.pathname.replace(/^\/item\//, ""));
+    if (!petName.trim()) {
+      navigateTo("/values");
+      return;
+    }
     document.title = `${petName} | PS99 Server Sniper`;
     loadPetDetail(petName);
     return;
@@ -392,8 +400,12 @@ function renderValueMatches() {
 }
 
 async function loadPetDetail(baseName) {
+  const loadId = state.itemLoadId + 1;
+  state.itemLoadId = loadId;
   const item = { baseName };
   state.selectedPet = item;
+  state.selectedMutationName = "";
+  state.mutations = [];
   elements.itemDetailTitle.textContent = baseName;
   elements.mutationPanel.hidden = false;
   elements.mutationPanel.innerHTML = `<div class="status">Loading mutations for ${escapeHtml(baseName)}...</div>`;
@@ -412,11 +424,23 @@ async function loadPetDetail(baseName) {
       throw new Error(payload.detail || payload.message || "Mutation lookup failed");
     }
 
+    if (state.itemLoadId !== loadId || state.selectedPet?.baseName !== baseName) {
+      return;
+    }
+
     state.mutations = payload.values;
     renderMutations(item);
     const regular = state.mutations.find(isRegularMutation) || state.mutations[0];
-    if (regular) selectMutation(regular.name);
+    if (regular) {
+      selectMutation(regular.name);
+    } else {
+      const historyEl = document.querySelector("#priceHistory");
+      if (historyEl) {
+        historyEl.innerHTML = `<div class="status">No RAP mutations found for ${escapeHtml(baseName)}.</div>`;
+      }
+    }
   } catch (error) {
+    if (state.itemLoadId !== loadId) return;
     elements.mutationPanel.innerHTML = `<div class="status">${escapeHtml(error.message)}</div>`;
   }
 }
@@ -471,6 +495,7 @@ function mutationLabel(item) {
 
 async function selectMutation(name) {
   state.selectedMutationName = name;
+  const loadId = state.itemLoadId;
   document.querySelectorAll(".mutation-option").forEach((button) => {
     button.classList.toggle("active", button.dataset.mutation === name);
   });
@@ -488,6 +513,10 @@ async function selectMutation(name) {
     const payload = await historyResult.json();
     if (!historyResult.ok || !payload.ok) {
       throw new Error(payload.detail || payload.message || "History lookup failed");
+    }
+
+    if (state.itemLoadId !== loadId || state.selectedMutationName !== name) {
+      return;
     }
 
     let prediction = null;
