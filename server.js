@@ -243,7 +243,7 @@ async function getValuesWithImages() {
 
 function cleanAssistantQuery(message) {
   return normalizeText(message)
-    .replace(/\b(what|is|the|value|rap|price|of|for|a|an|how|much|worth|tell|me|about|please|show|find|does|it|cost)\b/g, " ")
+    .replace(/\b(what|is|the|and|value|rap|price|of|for|a|an|how|much|worth|tell|me|about|please|show|find|does|it|cost|stock|chart|history|trend|current|past|future)\b/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -252,7 +252,7 @@ const assistantIntentWords = [
   "cheap", "cheapest", "lowest", "low", "top", "highest", "best", "expensive",
   "huge", "huges", "titanic", "titanics", "rainbow", "golden", "shiny",
   "mutation", "mutations", "variant", "variants", "history", "trend", "chart",
-  "rising", "falling", "up", "down"
+  "stock", "rising", "falling", "up", "down"
 ];
 
 const assistantTypoAliases = new Map(Object.entries({
@@ -448,7 +448,7 @@ async function answerValueQuestion(message) {
 
   const query = cleanAssistantQuery(normalized) || normalized;
   const baseQuery = query
-    .replace(/\b(cheap|cheapest|lowest|least expensive|low|regular|golden|rainbow|shiny)\b/g, " ")
+    .replace(/\b(cheap|cheapest|lowest|least expensive|low|regular|golden|rainbow|shiny|stock|chart|history|trend|current|past|future|value|rap|price|and)\b/g, " ")
     .replace(/\s+/g, " ")
     .trim();
   const matches = valuesResult.items
@@ -474,14 +474,27 @@ async function answerValueQuestion(message) {
 
   const top = matches[0];
   const exactMatch = matches.find((item) => item.search === query) || top;
-  const regularFamilyMatch = valuesResult.items.find((item) =>
-    normalizeHistoryName(item.baseName) === baseQuery &&
-    !item.variant.golden &&
-    !item.variant.rainbow &&
-    !item.variant.shiny &&
-    !item.variant.tier &&
-    !item.variant.chroma
-  );
+  const regularFamilyCandidates = valuesResult.items.filter((item) => {
+    const itemBase = normalizeHistoryName(item.baseName);
+    const isRegular = !item.variant.golden && !item.variant.rainbow && !item.variant.shiny && !item.variant.tier && !item.variant.chroma;
+    return isRegular && (
+      itemBase === baseQuery ||
+      itemBase.endsWith(` ${baseQuery}`) ||
+      baseQuery.endsWith(` ${itemBase}`)
+    );
+  });
+  const regularFamilyMatch = regularFamilyCandidates
+    .sort((a, b) => {
+      const scoreRegularCandidate = (item) => {
+        if (wantsTitanic && /^Titanic\b/.test(item.name)) return 40;
+        if (wantsHuge && /^Huge\b/.test(item.name)) return 40;
+        if (/^Titanic\b/.test(item.name)) return 30;
+        if (/^Huge\b/.test(item.name)) return 20;
+        if (normalizeHistoryName(item.baseName) === baseQuery) return 10;
+        return 0;
+      };
+      return scoreRegularCandidate(b) - scoreRegularCandidate(a) || b.value - a.value;
+    })[0];
   const selected = wantsCheapest && baseMatches.length
     ? baseMatches.slice().sort((a, b) => a.value - b.value)[0]
     : !wantsSpecificMutation && regularFamilyMatch
