@@ -243,18 +243,19 @@ async function getValuesWithImages() {
 
 function cleanAssistantQuery(message) {
   return normalizeText(message)
-    .replace(/\b(yo|i|found|find|should|buy|purchase|worth|deal|booth|seller|selling|what|is|the|and|value|rap|price|of|for|a|an|how|much|worth|tell|me|about|please|show|does|it|cost|stock|chart|history|trend|current|past|future)\b/g, " ")
+    .replace(/\b(yo|i|found|find|should|buy|purchase|worth|deal|booth|seller|selling|what|are|is|the|some|that|have|to|go|and|value|values|rap|price|of|for|a|an|how|much|worth|tell|me|about|please|show|does|it|cost|stock|chart|history|trend|current|past|future|expected)\b/g, " ")
     .replace(/\b\d+(?:\.\d+)?\s*(?:k|m|b|t)?\b/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
 
 const assistantIntentWords = [
+  "what", "are", "some", "that", "have", "values", "expected", "go", "to",
   "cheap", "cheapest", "lowest", "low", "top", "highest", "best", "expensive",
   "huge", "huges", "titanic", "titanics", "rainbow", "golden", "shiny",
   "mutation", "mutations", "variant", "variants", "history", "trend", "chart",
   "stock", "rising", "falling", "up", "down", "found", "buy", "should",
-  "deal", "booth", "profit", "skip"
+  "deal", "booth", "profit", "skip", "increase"
 ];
 
 const assistantTypoAliases = new Map(Object.entries({
@@ -416,6 +417,50 @@ function parseDiamondAmount(message) {
   return Math.round(amount * multiplier);
 }
 
+function isRegularItem(item) {
+  return !item.variant.golden && !item.variant.rainbow && !item.variant.shiny && !item.variant.tier && !item.variant.chroma;
+}
+
+async function findRisingRegularPets(items, prefix, limit) {
+  const candidates = items
+    .filter((item) => item.category === "Pet")
+    .filter((item) => item.name.startsWith(prefix))
+    .filter(isRegularItem)
+    .filter((item) => item.value >= 10000000)
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 80);
+  const results = [];
+  const batchSize = 8;
+
+  for (let start = 0; start < candidates.length && results.length < limit * 2; start += batchSize) {
+    const batch = candidates.slice(start, start + batchSize);
+    const checked = await Promise.allSettled(batch.map(async (item) => {
+      const history = await fetchRapHistoryByName(item.name);
+      const prediction = predictValueFromHistory(history.history);
+      if (!prediction || prediction.predicted7 <= prediction.current) return null;
+
+      const forecastPercent = prediction.current ? (prediction.predicted7 - prediction.current) / prediction.current * 100 : 0;
+      if (forecastPercent < 0.25) return null;
+
+      return {
+        item,
+        forecastPercent,
+        prediction
+      };
+    }));
+
+    for (const result of checked) {
+      if (result.status === "fulfilled" && result.value) {
+        results.push(result.value);
+      }
+    }
+  }
+
+  return results
+    .sort((a, b) => b.forecastPercent - a.forecastPercent || b.item.value - a.item.value)
+    .slice(0, limit);
+}
+
 async function answerValueQuestion(message) {
   const text = String(message || "").trim();
   const valuesResult = await getValuesWithImages();
@@ -426,9 +471,24 @@ async function answerValueQuestion(message) {
   const wantsHuge = /\bhuge|huges\b/.test(normalized);
   const wantsTitanic = /\btitanic|titanics\b/.test(normalized);
   const wantsSpecificMutation = /\b(golden|rainbow|shiny|chroma)\b/.test(normalized);
+  const wantsRisingList = /\b(expected|expect|future|predict|prediction|rise|rising|increase|up)\b/.test(normalized) && /\b(some|which|what|list|values|pets|huges|titanics)\b/.test(normalized);
   const offeredPrice = parseDiamondAmount(text);
   const wantsDealCheck = offeredPrice && /\b(should|buy|deal|profit|worth|found|booth|seller|selling)\b/.test(normalized);
   const requestedLimit = Math.max(1, Math.min(Number(normalized.match(/\btop\s+(\d+)\b/)?.[1] || normalized.match(/\b(\d+)\b/)?.[1] || 8), 20));
+
+  if (wantsRisingList && (wantsHuge || wantsTitanic)) {
+    const prefix = wantsTitanic ? "Titanic" : "Huge";
+    const rising = await findRisingRegularPets(valuesResult.items, prefix, requestedLimit);
+    const cards = rising.map((entry) => entry.item);
+
+    return {
+      answer: cards.length
+        ? `${correction.didCorrect ? `I read that as "${normalized}". ` : ""}Regular ${prefix}s with the strongest 7 day upward forecast: ${rising.map((entry, index) => `${index + 1}. ${entry.item.name} (+${entry.forecastPercent.toFixed(1)}%)`).join("; ")}. These are trend estimates, not guaranteed.`
+        : `I could not find regular ${prefix}s with a positive forecast right now.`,
+      cards,
+      historyUrl: cards[0] ? `/item/${encodeURIComponent(cards[0].baseName)}` : undefined
+    };
+  }
 
   if (wantsCheapest && wantsHuge) {
     const cheapHuges = valuesResult.items
