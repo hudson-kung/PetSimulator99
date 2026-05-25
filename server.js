@@ -13,7 +13,7 @@ const SERVER_CACHE_MS = 60000;
 const RAP_CACHE_MS = 4 * 60 * 60 * 1000;
 const serverCache = new Map();
 let rapCache = null;
-let petsCache = null;
+let catalogCache = null;
 let ps99RapSearchCache = null;
 
 const contentTypes = {
@@ -181,63 +181,98 @@ async function fetchRapValues() {
   }
 }
 
-async function fetchPetImages() {
-  if (petsCache && Date.now() - petsCache.createdAt < SERVER_CACHE_MS) {
-    return petsCache.images;
+async function fetchCollectionMetadata(collectionName, label) {
+  const response = await fetch(`https://ps99.biggamesapi.io/api/collection/${collectionName}`, {
+    headers: {
+      "Accept": "application/json",
+      "User-Agent": "PS99ServerSniper/1.0"
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`BIG Games ${label} returned ${response.status}`);
+  }
+
+  const payload = await response.json();
+  if (payload.status !== "ok" || !Array.isArray(payload.data)) {
+    throw new Error(`BIG Games returned an unexpected ${label} response`);
+  }
+
+  return payload.data;
+}
+
+async function fetchCatalogMetadata() {
+  if (catalogCache && Date.now() - catalogCache.createdAt < SERVER_CACHE_MS) {
+    return catalogCache.items;
   }
 
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 12000);
-    let response;
+    let pets = [];
+    let eggs = [];
 
     try {
-      response = await fetch("https://ps99.biggamesapi.io/api/collection/Pets", {
-        headers: {
-          "Accept": "application/json",
-          "User-Agent": "PS99ServerSniper/1.0"
-        },
-        signal: controller.signal
-      });
+      [pets, eggs] = await Promise.all([
+        fetchCollectionMetadata("Pets", "Pets"),
+        fetchCollectionMetadata("Eggs", "Eggs")
+      ]);
     } finally {
       clearTimeout(timeout);
     }
 
-    if (!response.ok) {
-      throw new Error(`BIG Games pets returned ${response.status}`);
-    }
-
-    const payload = await response.json();
-    if (payload.status !== "ok" || !Array.isArray(payload.data)) {
-      throw new Error("BIG Games returned an unexpected Pets response");
-    }
-
-    const images = new Map();
-    for (const pet of payload.data) {
+    const items = new Map();
+    for (const pet of pets) {
       const configData = pet.configData || {};
       const assetId = assetIdFromThumbnail(configData.thumbnail) || assetIdFromThumbnail(configData.goldenThumbnail);
       const name = pet.configName || configData.name;
       if (name && assetId) {
-        images.set(name, `https://ps99.biggamesapi.io/image/${assetId}`);
+        items.set(`Pet:${name}`, {
+          displayName: name,
+          imageUrl: `https://ps99.biggamesapi.io/image/${assetId}`,
+          aliases: [name]
+        });
       }
     }
 
-    petsCache = { createdAt: Date.now(), images };
-    return images;
+    for (const egg of eggs) {
+      const configData = egg.configData || {};
+      const assetId = assetIdFromThumbnail(configData.icon) || assetIdFromThumbnail(configData.thumbnail) || assetIdFromThumbnail(configData.goldenThumbnail);
+      const configName = egg.configName;
+      const displayName = configData.name || configName;
+      if (configName) {
+        items.set(`Egg:${configName}`, {
+          displayName,
+          imageUrl: assetId ? `https://ps99.biggamesapi.io/image/${assetId}` : "",
+          aliases: [configName, displayName, egg.category].filter(Boolean)
+        });
+      }
+    }
+
+    catalogCache = { createdAt: Date.now(), items };
+    return items;
   } catch (error) {
-    if (petsCache) return petsCache.images;
+    if (catalogCache) return catalogCache.items;
     return new Map();
   }
 }
 
 async function getValuesWithImages() {
-  const [rapResult, petImages] = await Promise.all([fetchRapValues(), fetchPetImages()]);
+  const [rapResult, catalogMetadata] = await Promise.all([fetchRapValues(), fetchCatalogMetadata()]);
   return {
     ...rapResult,
-    items: rapResult.items.map((item) => ({
-      ...item,
-      imageUrl: item.category === "Pet" ? petImages.get(item.baseName) || "" : ""
-    }))
+    items: rapResult.items.map((item) => {
+      const metadata = catalogMetadata.get(`${item.category}:${item.baseName}`);
+      const displayName = metadata?.displayName || item.name;
+      const aliases = metadata?.aliases || [];
+      return {
+        ...item,
+        name: displayName,
+        rapName: item.name,
+        search: normalizeText([displayName, item.name, item.baseName, item.category, ...aliases].join(" ")),
+        imageUrl: metadata?.imageUrl || ""
+      };
+    })
   };
 }
 
@@ -418,6 +453,11 @@ function parseDiamondAmount(message) {
   return Math.round(amount * multiplier);
 }
 
+function itemChartUrl(item) {
+  const chartName = item.category === "Pet" ? item.baseName : item.name;
+  return `/item/${encodeURIComponent(chartName)}`;
+}
+
 function isRegularItem(item) {
   return !item.variant.golden && !item.variant.rainbow && !item.variant.shiny && !item.variant.tier && !item.variant.chroma;
 }
@@ -566,6 +606,7 @@ async function answerValueQuestion(message) {
   const top = matches[0];
   const exactMatch = matches.find((item) => item.search === query) || top;
   const regularFamilyCandidates = valuesResult.items.filter((item) => {
+    if (item.category !== "Pet") return false;
     const itemBase = normalizeHistoryName(item.baseName);
     const isRegular = !item.variant.golden && !item.variant.rainbow && !item.variant.shiny && !item.variant.tier && !item.variant.chroma;
     return isRegular && (
@@ -603,7 +644,7 @@ async function answerValueQuestion(message) {
     return {
       answer: `${correction.didCorrect ? `I read that as "${normalized}". ` : ""}${decision}: ${selected.name} RAP is ${selected.value.toLocaleString()} and the booth price is ${offeredPrice.toLocaleString()}. ${reason}`,
       cards: [selected],
-      historyUrl: `/item/${encodeURIComponent(selected.baseName)}`
+      historyUrl: itemChartUrl(selected)
     };
   }
 
@@ -615,7 +656,7 @@ async function answerValueQuestion(message) {
     return {
       answer: `${selected.baseName} has ${variants.length} tracked variant${variants.length === 1 ? "" : "s"} in RAP. Cheapest shown is ${variants[0]?.name || "unknown"} at ${variants[0]?.value?.toLocaleString() || "unknown"} RAP.`,
       cards: variants,
-      historyUrl: `/item/${encodeURIComponent(selected.baseName)}`
+      historyUrl: itemChartUrl(selected)
     };
   }
 
@@ -628,14 +669,14 @@ async function answerValueQuestion(message) {
         return {
           answer: `${selected.name} is ${direction} ${Math.abs(change.percent).toFixed(1)}% over the recent chart window. Current RAP is ${change.last.toLocaleString()}, from ${change.first.toLocaleString()}.`,
           cards: [selected],
-          historyUrl: `/item/${encodeURIComponent(selected.baseName)}`
+          historyUrl: itemChartUrl(selected)
         };
       }
     } catch {
       return {
         answer: `${correction.didCorrect ? `I read that as "${normalized}". ` : ""}${selected.name} is currently ${selected.value.toLocaleString()} RAP, but I could not load its history right now.`,
         cards: [selected],
-        historyUrl: `/item/${encodeURIComponent(selected.baseName)}`
+        historyUrl: itemChartUrl(selected)
       };
     }
   }
@@ -647,14 +688,14 @@ async function answerValueQuestion(message) {
     return {
       answer: `${correction.didCorrect ? `I read that as "${normalized}". ` : ""}The cheapest close match I found is ${selected.name} at ${selected.value.toLocaleString()} RAP.`,
       cards: cheapestCards,
-      historyUrl: `/item/${encodeURIComponent(selected.baseName)}`
+      historyUrl: itemChartUrl(selected)
     };
   }
 
   return {
     answer: `${correction.didCorrect ? `I read that as "${normalized}". ` : ""}${selected.name} is currently ${selected.value.toLocaleString()} RAP. I found ${matches.length} close match${matches.length === 1 ? "" : "es"} below.`,
     cards: matches,
-    historyUrl: `/item/${encodeURIComponent(selected.baseName)}`
+    historyUrl: itemChartUrl(selected)
   };
 }
 

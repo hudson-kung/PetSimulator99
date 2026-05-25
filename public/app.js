@@ -338,7 +338,6 @@ async function searchValues(query) {
   try {
     const params = new URLSearchParams({
       q: query,
-      category: "Pet",
       regularOnly: "true",
       page: String(state.valuePage),
       pageSize: String(state.valuePageSize)
@@ -351,7 +350,7 @@ async function searchValues(query) {
 
     state.valueMatches = payload.values;
     state.valueTotalPages = payload.totalPages;
-    elements.selectedValue.textContent = `${payload.total.toLocaleString()} regular pet RAP values (${payload.source}). Click a pet to see mutations.`;
+    elements.selectedValue.textContent = `${payload.total.toLocaleString()} regular RAP values (${payload.source}). Search pets, eggs, enchants, booths, and more.`;
     elements.mutationPanel.hidden = true;
     renderPager(payload);
     renderValueMatches();
@@ -370,7 +369,7 @@ function renderValueMatches() {
   elements.valueResults.innerHTML = "";
 
   if (!state.valueMatches.length) {
-    elements.valueResults.innerHTML = `<div class="status">No pet values found.</div>`;
+    elements.valueResults.innerHTML = `<div class="status">No RAP values found.</div>`;
     return;
   }
 
@@ -394,7 +393,7 @@ function renderValueMatches() {
       </div>
       <span class="badge">${formatDiamonds(item.value)}</span>
     `;
-    card.addEventListener("click", () => navigateTo(`/item/${encodeURIComponent(item.baseName)}`));
+    card.addEventListener("click", () => navigateTo(`/item/${encodeURIComponent(item.name)}`));
     elements.valueResults.appendChild(card);
   }
 }
@@ -429,20 +428,40 @@ async function loadPetDetail(baseName) {
     }
 
     state.mutations = payload.values;
-    renderMutations(item);
     const regular = state.mutations.find(isRegularMutation) || state.mutations[0];
     if (regular) {
+      renderMutations(item);
       selectMutation(regular.name);
     } else {
-      const historyEl = document.querySelector("#priceHistory");
-      if (historyEl) {
-        historyEl.innerHTML = `<div class="status">No RAP mutations found for ${escapeHtml(baseName)}.</div>`;
-      }
+      renderSingleItemHistory(item);
+      selectMutation(baseName);
     }
   } catch (error) {
     if (state.itemLoadId !== loadId) return;
     elements.mutationPanel.innerHTML = `<div class="status">${escapeHtml(error.message)}</div>`;
   }
+}
+
+function renderSingleItemHistory(item) {
+  elements.mutationPanel.innerHTML = `
+    <div class="mutation-head">
+      <div>
+        <p class="eyebrow">RAP item</p>
+        <h2>${escapeHtml(item.baseName)}</h2>
+      </div>
+      <a class="ghost cta" href="/values" data-page-link="values">Back to values</a>
+    </div>
+    <div id="priceHistory" class="price-history">
+      <div class="status">Loading RAP history for ${escapeHtml(item.baseName)}...</div>
+    </div>
+  `;
+
+  elements.mutationPanel.querySelectorAll("[data-page-link]").forEach((link) => {
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+      navigateTo(link.getAttribute("href"));
+    });
+  });
 }
 
 function renderMutations(item) {
