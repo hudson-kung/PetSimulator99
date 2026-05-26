@@ -3,6 +3,30 @@ const fs = require("fs");
 const path = require("path");
 const { spawn } = require("child_process");
 
+function loadLocalEnv() {
+  const envPath = path.join(__dirname, ".env");
+  if (!fs.existsSync(envPath)) return;
+
+  const lines = fs.readFileSync(envPath, "utf8").split(/\r?\n/);
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const equalsIndex = trimmed.indexOf("=");
+    if (equalsIndex === -1) continue;
+
+    const key = trimmed.slice(0, equalsIndex).trim();
+    let value = trimmed.slice(equalsIndex + 1).trim();
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      value = value.slice(1, -1);
+    }
+    if (key && process.env[key] === undefined) {
+      process.env[key] = value;
+    }
+  }
+}
+
+loadLocalEnv();
+
 const PORT = Number(process.env.PORT || 3055);
 const PUBLIC_DIR = path.join(__dirname, "public");
 const ROBLOX_SERVERS_URL = "https://games.roblox.com/v1/games";
@@ -610,7 +634,9 @@ async function improveAssistantAnswer(message, result) {
     ? ["ollama"]
     : ASSISTANT_MODEL_PROVIDER === "nvidia"
       ? ["nvidia"]
-      : ["ollama", "nvidia"];
+      : process.env.NVIDIA_API_KEY && !process.env.OLLAMA_URL
+        ? ["nvidia", "ollama"]
+        : ["ollama", "nvidia"];
 
   for (const provider of providers) {
     try {

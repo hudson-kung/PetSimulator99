@@ -29,6 +29,15 @@ set NVIDIA_API_KEY=your_key_here
 set NVIDIA_MODEL=meta/llama-3.1-8b-instruct
 ```
 
+For the hosted website, set `NVIDIA_API_KEY` in the host's environment variables or secrets panel. Do not put it in `public/app.js` or commit it to GitHub.
+
+Render deploy:
+
+1. Connect this repo to Render as a Web Service.
+2. Use the included `render.yaml`.
+3. Add `NVIDIA_API_KEY` as a secret environment variable in Render.
+4. Deploy.
+
 Provider options:
 
 ```bash
