@@ -667,7 +667,17 @@ async function getAssistantModelStatus() {
       ? "NVIDIA key is configured on the server."
       : "NVIDIA_API_KEY is not set on the website host."
   };
-  const ollama = await getOllamaModelStatus();
+  const skippedOllama = {
+    id: "ollama",
+    label: "Ollama",
+    configured: false,
+    available: false,
+    model: OLLAMA_MODEL,
+    url: OLLAMA_URL,
+    message: "Ollama check skipped because NVIDIA is selected."
+  };
+  const shouldCheckOllama = ASSISTANT_MODEL_PROVIDER === "ollama" || ASSISTANT_MODEL_PROVIDER === "auto";
+  const ollama = shouldCheckOllama ? await getOllamaModelStatus() : skippedOllama;
   let active = "rules";
 
   if (ASSISTANT_MODEL_PROVIDER === "nvidia") {
