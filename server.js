@@ -8,6 +8,11 @@ const PUBLIC_DIR = path.join(__dirname, "public");
 const ROBLOX_SERVERS_URL = "https://games.roblox.com/v1/games";
 const PS99_RAP_URL = "https://ps99.biggamesapi.io/api/rap";
 const PS99RAP_BASE_URL = "https://ps99rap.com";
+const OLLAMA_URL = process.env.OLLAMA_URL || "http://127.0.0.1:11434";
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "llama3.1";
+const NVIDIA_API_URL = process.env.NVIDIA_API_URL || "https://integrate.api.nvidia.com/v1/chat/completions";
+const NVIDIA_MODEL = process.env.NVIDIA_MODEL || "meta/llama-3.1-8b-instruct";
+const ASSISTANT_MODEL_PROVIDER = (process.env.ASSISTANT_MODEL_PROVIDER || "auto").toLowerCase();
 const DEFAULT_PLACE_ID = "15502339080";
 const SERVER_CACHE_MS = 60000;
 const RAP_CACHE_MS = 4 * 60 * 60 * 1000;
@@ -32,6 +37,34 @@ function sendJson(res, status, body) {
     "Cache-Control": "no-store"
   });
   res.end(JSON.stringify(body));
+}
+
+async function fetchJsonWithTimeout(url, options = {}, timeoutMs = 8000) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    const text = await response.text();
+    let payload = null;
+
+    try {
+      payload = text ? JSON.parse(text) : null;
+    } catch {
+      payload = { text };
+    }
+
+    if (!response.ok) {
+      throw new Error(payload?.error?.message || payload?.message || `HTTP ${response.status}`);
+    }
+
+    return payload;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function sanitizePlaceId(value) {
@@ -493,6 +526,111 @@ function parseDiamondAmount(message) {
           : 1;
 
   return Math.round(amount * multiplier);
+}
+
+function buildModelPrompt(message, result) {
+  const cards = (result.cards || []).slice(0, 8).map((item) => ({
+    name: item.name,
+    category: item.category,
+    rap: item.value,
+    demand: item.demand,
+    regular: isRegularItem(item)
+  }));
+
+  return [
+    {
+      role: "system",
+      content: [
+        "You are the PS99 Sniper assistant inside a local web app.",
+        "Answer casually and directly.",
+        "Use only the provided RAP/value data. Do not invent live server prices, demand, or guarantees.",
+        "If demand appears, call it estimated demand.",
+        "Keep answers short: 1-4 sentences.",
+        "Do not mention APIs, JSON, prompts, or model providers."
+      ].join(" ")
+    },
+    {
+      role: "user",
+      content: JSON.stringify({
+        userMessage: message,
+        computedAnswer: result.answer,
+        cards,
+        historyUrl: result.historyUrl
+      })
+    }
+  ];
+}
+
+async function askOllama(message, result) {
+  const payload = await fetchJsonWithTimeout(`${OLLAMA_URL}/api/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: OLLAMA_MODEL,
+      messages: buildModelPrompt(message, result),
+      stream: false,
+      options: {
+        temperature: 0.25,
+        num_predict: 220
+      }
+    })
+  }, 9000);
+
+  return payload?.message?.content?.trim() || "";
+}
+
+async function askNvidia(message, result) {
+  if (!process.env.NVIDIA_API_KEY) {
+    throw new Error("NVIDIA_API_KEY is not set");
+  }
+
+  const payload = await fetchJsonWithTimeout(NVIDIA_API_URL, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${process.env.NVIDIA_API_KEY}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: NVIDIA_MODEL,
+      messages: buildModelPrompt(message, result),
+      temperature: 0.25,
+      max_tokens: 220
+    })
+  }, 12000);
+
+  return payload?.choices?.[0]?.message?.content?.trim() || "";
+}
+
+async function improveAssistantAnswer(message, result) {
+  if (ASSISTANT_MODEL_PROVIDER === "rules") {
+    return { ...result, modelProvider: "rules" };
+  }
+
+  const providers = ASSISTANT_MODEL_PROVIDER === "ollama"
+    ? ["ollama"]
+    : ASSISTANT_MODEL_PROVIDER === "nvidia"
+      ? ["nvidia"]
+      : ["ollama", "nvidia"];
+
+  for (const provider of providers) {
+    try {
+      const answer = provider === "ollama"
+        ? await askOllama(message, result)
+        : await askNvidia(message, result);
+
+      if (answer) {
+        return {
+          ...result,
+          answer,
+          modelProvider: provider
+        };
+      }
+    } catch {
+      // Fall back silently so value lookups keep working without a model.
+    }
+  }
+
+  return { ...result, modelProvider: "rules" };
 }
 
 function itemChartUrl(item) {
@@ -1098,7 +1236,7 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      const result = await answerValueQuestion(message);
+      const result = await improveAssistantAnswer(message, await answerValueQuestion(message));
       sendJson(res, 200, { ok: true, ...result });
     } catch (error) {
       sendJson(res, 502, {
