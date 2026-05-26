@@ -524,6 +524,11 @@ button {
   padding: 4px 7px;
 }
 
+.demand-chip {
+  border-color: rgba(157, 134, 255, 0.55);
+  color: #c9bdff;
+}
+
 .value-card .badge {
   justify-content: center;
   width: 100%;

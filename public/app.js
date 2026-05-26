@@ -212,6 +212,7 @@ function renderAssistantCard(item) {
       ${item.imageUrl ? `<img src="${item.imageUrl}" alt="${escapeHtml(item.name)}">` : ""}
       <div>
         <strong>${escapeHtml(item.name)}</strong>
+        ${item.demand ? `<span>Demand: ${escapeHtml(item.demand.label)} (${item.demand.score}/100)</span>` : ""}
         <span>${escapeHtml(item.category)} · ${formatDiamonds(item.value)} RAP</span>
       </div>
     </article>
@@ -389,6 +390,7 @@ function renderValueMatches() {
           ${item.variant.golden ? `<span class="chip">Golden</span>` : ""}
           ${item.variant.rainbow ? `<span class="chip">Rainbow</span>` : ""}
           ${item.variant.tier ? `<span class="chip">Tier ${item.variant.tier}</span>` : ""}
+          ${item.demand ? `<span class="chip demand-chip">Demand ${escapeHtml(item.demand.label)}</span>` : ""}
         </div>
       </div>
       <span class="badge">${formatDiamonds(item.value)}</span>

@@ -135,6 +135,47 @@ function scoreRapMatch(item, query) {
   return hits || fuzzyHits ? 250 + hits * 90 + fuzzyHits * 45 : 0;
 }
 
+function estimateDemand(item) {
+  const name = item.name || item.baseName || "";
+  const value = Number(item.value || 0);
+  let score = 18;
+
+  if (item.category === "Pet") {
+    score += 8;
+    if (/^Titanic\b/.test(name)) score += 44;
+    else if (/^Gargantuan\b/.test(name)) score += 40;
+    else if (/^Huge\b/.test(name)) score += 30;
+    else if (/Exclusive|Event|Secret/i.test(name)) score += 16;
+
+    if (item.variant.shiny) score += 5;
+    if (item.variant.rainbow) score += 4;
+    if (item.variant.golden) score += 2;
+  } else if (item.category === "Egg") {
+    score += 26;
+    if (/Exclusive/i.test(name)) score += 18;
+    if (/Chroma|Titanic|Gargantuan|Huge/i.test(name)) score += 6;
+  } else if (/Enchant|Potion|Charm/i.test(item.category)) {
+    score += 20;
+  } else {
+    score += 10;
+  }
+
+  if (value >= 10000000000) score += 20;
+  else if (value >= 1000000000) score += 16;
+  else if (value >= 100000000) score += 12;
+  else if (value >= 10000000) score += 8;
+  else if (value >= 1000000) score += 4;
+
+  score = Math.max(1, Math.min(100, Math.round(score)));
+  const label = score >= 82 ? "Very high" : score >= 65 ? "High" : score >= 45 ? "Medium" : score >= 25 ? "Low" : "Very low";
+
+  return {
+    label,
+    score,
+    note: "Estimated from item type and RAP tier"
+  };
+}
+
 async function fetchRapValues() {
   if (rapCache && Date.now() - rapCache.createdAt < RAP_CACHE_MS) {
     return { items: rapCache.items, source: "cache" };
@@ -270,7 +311,8 @@ async function getValuesWithImages() {
         name: displayName,
         rapName: item.name,
         search: normalizeText([displayName, item.name, item.baseName, item.category, ...aliases].join(" ")),
-        imageUrl: metadata?.imageUrl || ""
+        imageUrl: metadata?.imageUrl || "",
+        demand: estimateDemand({ ...item, name: displayName })
       };
     })
   };
@@ -278,7 +320,7 @@ async function getValuesWithImages() {
 
 function cleanAssistantQuery(message) {
   return normalizeText(message)
-    .replace(/\b(yo|i|my|mean|found|find|should|buy|purchase|worth|deal|booth|seller|selling|what|are|is|the|some|that|have|to|go|and|value|values|rap|price|of|for|a|an|how|much|worth|tell|me|about|please|show|does|it|cost|stock|chart|history|trend|current|past|future|expected|expect|predicted|predict|prediction|under|below|less|budget)\b/g, " ")
+    .replace(/\b(yo|i|my|mean|found|find|should|buy|purchase|worth|deal|booth|seller|selling|what|are|is|the|some|that|have|to|go|and|value|values|rap|price|demand|of|for|a|an|how|much|worth|tell|me|about|please|show|does|it|cost|stock|chart|history|trend|current|past|future|expected|expect|predicted|predict|prediction|under|below|less|budget)\b/g, " ")
     .replace(/\b\d+(?:\.\d+)?\s*(?:k|m|b|t)?\b/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -291,7 +333,7 @@ const assistantIntentWords = [
   "mutation", "mutations", "variant", "variants", "history", "trend", "chart",
   "stock", "rising", "falling", "up", "down", "found", "buy", "should",
   "deal", "booth", "profit", "skip", "increase", "under", "below", "less",
-  "budget", "mean", "my"
+  "budget", "mean", "my", "demand"
 ];
 
 const assistantTypoAliases = new Map(Object.entries({
@@ -514,6 +556,7 @@ async function answerValueQuestion(message) {
   const wantsTitanic = /\btitanic|titanics\b/.test(normalized);
   const wantsSpecificMutation = /\b(golden|rainbow|shiny|chroma)\b/.test(normalized);
   const wantsRisingList = /\b(expected|expect|future|predict|prediction|rise|rising|increase|up)\b/.test(normalized) && /\b(some|which|what|list|values|pets|huges|titanics)\b/.test(normalized);
+  const wantsDemand = /\bdemand\b/.test(normalized);
   const offeredPrice = parseDiamondAmount(text);
   const wantsBudgetFilter = offeredPrice && /\b(under|below|less|budget)\b/.test(normalized);
   const wantsDealCheck = offeredPrice && /\b(should|buy|deal|profit|worth|found|booth|seller|selling)\b/.test(normalized);
@@ -578,7 +621,7 @@ async function answerValueQuestion(message) {
 
   const query = cleanAssistantQuery(normalized) || normalized;
   const baseQuery = query
-    .replace(/\b(cheap|cheapest|lowest|least expensive|low|regular|golden|rainbow|shiny|stock|chart|history|trend|current|past|future|value|values|rap|price|and|yo|i|my|mean|found|find|should|buy|purchase|worth|deal|booth|seller|selling|profit|skip|under|below|less|budget|expected|expect|predicted|predict|prediction)\b/g, " ")
+    .replace(/\b(cheap|cheapest|lowest|least expensive|low|regular|golden|rainbow|shiny|stock|chart|history|trend|current|past|future|value|values|rap|price|demand|and|yo|i|my|mean|found|find|should|buy|purchase|worth|deal|booth|seller|selling|profit|skip|under|below|less|budget|expected|expect|predicted|predict|prediction)\b/g, " ")
     .replace(/\b\d+(?:\.\d+)?\s*(?:k|m|b|t)?\b/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -632,6 +675,14 @@ async function answerValueQuestion(message) {
     : !wantsSpecificMutation && regularFamilyMatch
       ? regularFamilyMatch
     : exactMatch;
+
+  if (wantsDemand) {
+    return {
+      answer: `${selected.name} demand is ${selected.demand?.label || "unknown"} (${selected.demand?.score || "?"}/100). RAP is ${selected.value.toLocaleString()}. Demand is estimated, not an official live BIG Games stat.`,
+      cards: [selected],
+      historyUrl: itemChartUrl(selected)
+    };
+  }
 
   if (wantsDealCheck) {
     const profit = selected.value - offeredPrice;
