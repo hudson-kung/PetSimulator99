@@ -725,6 +725,44 @@ button {
   margin-inline: auto;
 }
 
+.model-status {
+  display: grid;
+  gap: 2px;
+  min-width: 230px;
+  max-width: 330px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #111716;
+  color: var(--muted);
+  padding: 10px 12px;
+  line-height: 1.25;
+}
+
+.model-status span {
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.model-status strong {
+  color: var(--text);
+}
+
+.model-status small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.model-status.ready {
+  border-color: rgba(79, 214, 164, 0.38);
+}
+
+.model-status.warning {
+  border-color: rgba(255, 183, 77, 0.42);
+}
+
 .assistant-messages {
   display: grid;
   gap: 12px;
@@ -809,6 +847,13 @@ button {
 .assistant-card span {
   margin-top: 3px;
   font-size: 0.86rem;
+}
+
+.assistant-provider {
+  margin-top: 10px;
+  font-size: 0.78rem;
+  color: var(--muted);
+  opacity: 0.76;
 }
 
 .selected-value,
@@ -937,6 +982,12 @@ button {
 
   .panel-head input {
     max-width: none;
+  }
+
+  .model-status {
+    min-width: 0;
+    max-width: none;
+    width: 100%;
   }
 
   .server-actions {

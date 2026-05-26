@@ -625,6 +625,74 @@ async function askNvidia(message, result) {
   return payload?.choices?.[0]?.message?.content?.trim() || "";
 }
 
+async function getOllamaModelStatus() {
+  try {
+    const payload = await fetchJsonWithTimeout(`${OLLAMA_URL}/api/tags`, {
+      headers: { "Accept": "application/json" }
+    }, 1500);
+    const models = Array.isArray(payload.models)
+      ? payload.models.map((model) => model.name).filter(Boolean)
+      : [];
+
+    return {
+      id: "ollama",
+      label: "Ollama",
+      configured: true,
+      available: true,
+      model: OLLAMA_MODEL,
+      url: OLLAMA_URL,
+      models
+    };
+  } catch (error) {
+    return {
+      id: "ollama",
+      label: "Ollama",
+      configured: true,
+      available: false,
+      model: OLLAMA_MODEL,
+      url: OLLAMA_URL,
+      message: "Ollama is not reachable from this server."
+    };
+  }
+}
+
+async function getAssistantModelStatus() {
+  const nvidia = {
+    id: "nvidia",
+    label: "NVIDIA",
+    configured: Boolean(process.env.NVIDIA_API_KEY),
+    available: Boolean(process.env.NVIDIA_API_KEY),
+    model: NVIDIA_MODEL,
+    message: process.env.NVIDIA_API_KEY
+      ? "NVIDIA key is configured on the server."
+      : "NVIDIA_API_KEY is not set on the website host."
+  };
+  const ollama = await getOllamaModelStatus();
+  let active = "rules";
+
+  if (ASSISTANT_MODEL_PROVIDER === "nvidia") {
+    active = nvidia.available ? "nvidia" : "rules";
+  } else if (ASSISTANT_MODEL_PROVIDER === "ollama") {
+    active = ollama.available ? "ollama" : "rules";
+  } else if (ASSISTANT_MODEL_PROVIDER === "rules") {
+    active = "rules";
+  } else {
+    active = nvidia.available ? "nvidia" : ollama.available ? "ollama" : "rules";
+  }
+
+  return {
+    mode: ASSISTANT_MODEL_PROVIDER,
+    active,
+    providers: [nvidia, ollama],
+    fallback: {
+      id: "rules",
+      label: "Rules fallback",
+      available: true,
+      message: "The value assistant still works, but answers are generated without an AI model."
+    }
+  };
+}
+
 async function improveAssistantAnswer(message, result) {
   if (ASSISTANT_MODEL_PROVIDER === "rules") {
     return { ...result, modelProvider: "rules" };
@@ -1268,6 +1336,19 @@ const server = http.createServer(async (req, res) => {
       sendJson(res, 502, {
         ok: false,
         message: "The value assistant could not answer right now.",
+        detail: error.message
+      });
+    }
+    return;
+  }
+
+  if (url.pathname === "/api/model-status") {
+    try {
+      sendJson(res, 200, { ok: true, ...(await getAssistantModelStatus()) });
+    } catch (error) {
+      sendJson(res, 502, {
+        ok: false,
+        message: "Could not check model status right now.",
         detail: error.message
       });
     }
