@@ -667,33 +667,36 @@ async function getAssistantModelStatus() {
       ? "NVIDIA key is configured on the server."
       : "NVIDIA_API_KEY is not set on the website host."
   };
-  const skippedOllama = {
-    id: "ollama",
-    label: "Ollama",
-    configured: false,
-    available: false,
-    model: OLLAMA_MODEL,
-    url: OLLAMA_URL,
-    message: "Ollama check skipped because NVIDIA is selected."
-  };
   const shouldCheckOllama = ASSISTANT_MODEL_PROVIDER === "ollama" || ASSISTANT_MODEL_PROVIDER === "auto";
-  const ollama = shouldCheckOllama ? await getOllamaModelStatus() : skippedOllama;
+  const ollama = shouldCheckOllama ? await getOllamaModelStatus() : null;
   let active = "rules";
 
   if (ASSISTANT_MODEL_PROVIDER === "nvidia") {
     active = nvidia.available ? "nvidia" : "rules";
   } else if (ASSISTANT_MODEL_PROVIDER === "ollama") {
-    active = ollama.available ? "ollama" : "rules";
+    active = ollama?.available ? "ollama" : "rules";
   } else if (ASSISTANT_MODEL_PROVIDER === "rules") {
     active = "rules";
   } else {
-    active = nvidia.available ? "nvidia" : ollama.available ? "ollama" : "rules";
+    active = nvidia.available ? "nvidia" : ollama?.available ? "ollama" : "rules";
+  }
+
+  const providers = [nvidia];
+  if (ollama?.available || ASSISTANT_MODEL_PROVIDER === "ollama") {
+    providers.push({
+      id: "ollama",
+      label: "Local model",
+      configured: Boolean(ollama?.available),
+      available: Boolean(ollama?.available),
+      model: OLLAMA_MODEL,
+      models: ollama?.models || []
+    });
   }
 
   return {
     mode: ASSISTANT_MODEL_PROVIDER,
     active,
-    providers: [nvidia, ollama],
+    providers,
     fallback: {
       id: "rules",
       label: "Rules fallback",

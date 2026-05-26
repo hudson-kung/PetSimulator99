@@ -185,14 +185,14 @@ async function loadModelStatus() {
     elements.modelStatus.innerHTML = `
       <span>Model</span>
       <strong>Rules fallback</strong>
-      <small>${escapeHtml(nvidia?.message || payload.fallback?.message || "No model provider is configured.")}</small>
+      <small>${escapeHtml(nvidia?.message || "No AI model is connected.")}</small>
     `;
     elements.modelStatus.classList.add("warning");
   } catch (error) {
     elements.modelStatus.innerHTML = `
       <span>Model</span>
       <strong>Status unavailable</strong>
-      <small>${escapeHtml(error.message)}</small>
+      <small>Refresh the page in a minute.</small>
     `;
     elements.modelStatus.classList.add("warning");
   }
@@ -238,7 +238,7 @@ function appendAssistantResult(payload) {
   const providerLabel = payload.modelProvider === "nvidia"
     ? "NVIDIA"
     : payload.modelProvider === "ollama"
-      ? "Ollama"
+      ? "AI model"
       : "Rules fallback";
   const wrapper = document.createElement("div");
   wrapper.className = "assistant-message bot";
