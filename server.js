@@ -34,8 +34,6 @@ const PS99_RAP_URL = "https://ps99.biggamesapi.io/api/rap";
 const PS99RAP_BASE_URL = "https://ps99rap.com";
 const OLLAMA_URL = process.env.OLLAMA_URL || "http://127.0.0.1:11434";
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "llama3.1";
-const NVIDIA_API_URL = process.env.NVIDIA_API_URL || "https://integrate.api.nvidia.com/v1/chat/completions";
-const NVIDIA_MODEL = process.env.NVIDIA_MODEL || "meta/llama-3.1-8b-instruct";
 const ASSISTANT_MODEL_PROVIDER = (process.env.ASSISTANT_MODEL_PROVIDER || "auto").toLowerCase();
 const DEFAULT_PLACE_ID = "15502339080";
 const SERVER_CACHE_MS = 60000;
@@ -603,28 +601,6 @@ async function askOllama(message, result) {
   return payload?.message?.content?.trim() || "";
 }
 
-async function askNvidia(message, result) {
-  if (!process.env.NVIDIA_API_KEY) {
-    throw new Error("NVIDIA_API_KEY is not set");
-  }
-
-  const payload = await fetchJsonWithTimeout(NVIDIA_API_URL, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${process.env.NVIDIA_API_KEY}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      model: NVIDIA_MODEL,
-      messages: buildModelPrompt(message, result),
-      temperature: 0.25,
-      max_tokens: 220
-    })
-  }, 12000);
-
-  return payload?.choices?.[0]?.message?.content?.trim() || "";
-}
-
 async function getOllamaModelStatus() {
   try {
     const payload = await fetchJsonWithTimeout(`${OLLAMA_URL}/api/tags`, {
@@ -657,31 +633,19 @@ async function getOllamaModelStatus() {
 }
 
 async function getAssistantModelStatus() {
-  const nvidia = {
-    id: "nvidia",
-    label: "NVIDIA",
-    configured: Boolean(process.env.NVIDIA_API_KEY),
-    available: Boolean(process.env.NVIDIA_API_KEY),
-    model: NVIDIA_MODEL,
-    message: process.env.NVIDIA_API_KEY
-      ? "NVIDIA key is configured on the server."
-      : "NVIDIA_API_KEY is not set on the website host."
-  };
   const shouldCheckOllama = ASSISTANT_MODEL_PROVIDER === "ollama" || ASSISTANT_MODEL_PROVIDER === "auto";
   const ollama = shouldCheckOllama ? await getOllamaModelStatus() : null;
   let active = "rules";
 
-  if (ASSISTANT_MODEL_PROVIDER === "nvidia") {
-    active = nvidia.available ? "nvidia" : "rules";
-  } else if (ASSISTANT_MODEL_PROVIDER === "ollama") {
+  if (ASSISTANT_MODEL_PROVIDER === "ollama") {
     active = ollama?.available ? "ollama" : "rules";
   } else if (ASSISTANT_MODEL_PROVIDER === "rules") {
     active = "rules";
   } else {
-    active = nvidia.available ? "nvidia" : ollama?.available ? "ollama" : "rules";
+    active = ollama?.available ? "ollama" : "rules";
   }
 
-  const providers = [nvidia];
+  const providers = [];
   if (ollama?.available || ASSISTANT_MODEL_PROVIDER === "ollama") {
     providers.push({
       id: "ollama",
@@ -711,19 +675,13 @@ async function improveAssistantAnswer(message, result) {
     return { ...result, modelProvider: "rules" };
   }
 
-  const providers = ASSISTANT_MODEL_PROVIDER === "ollama"
+  const providers = ASSISTANT_MODEL_PROVIDER === "ollama" || ASSISTANT_MODEL_PROVIDER === "auto"
     ? ["ollama"]
-    : ASSISTANT_MODEL_PROVIDER === "nvidia"
-      ? ["nvidia"]
-      : process.env.NVIDIA_API_KEY && !process.env.OLLAMA_URL
-        ? ["nvidia", "ollama"]
-        : ["ollama", "nvidia"];
+    : [];
 
   for (const provider of providers) {
     try {
-      const answer = provider === "ollama"
-        ? await askOllama(message, result)
-        : await askNvidia(message, result);
+      const answer = await askOllama(message, result);
 
       if (answer) {
         return {

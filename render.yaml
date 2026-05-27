@@ -7,8 +7,4 @@ services:
     startCommand: npm start
     envVars:
       - key: ASSISTANT_MODEL_PROVIDER
-        value: nvidia
-      - key: NVIDIA_MODEL
-        value: meta/llama-3.1-8b-instruct
-      - key: NVIDIA_API_KEY
-        sync: false
+        value: rules

@@ -181,11 +181,10 @@ async function loadModelStatus() {
       return;
     }
 
-    const nvidia = payload.providers?.find((provider) => provider.id === "nvidia");
     elements.modelStatus.innerHTML = `
       <span>Model</span>
       <strong>Rules fallback</strong>
-      <small>${escapeHtml(nvidia?.message || "No AI model is connected.")}</small>
+      <small>No AI model is connected.</small>
     `;
     elements.modelStatus.classList.add("warning");
   } catch (error) {
@@ -235,9 +234,7 @@ function appendAssistantMessage(role, text) {
 }
 
 function appendAssistantResult(payload) {
-  const providerLabel = payload.modelProvider === "nvidia"
-    ? "NVIDIA"
-    : payload.modelProvider === "ollama"
+  const providerLabel = payload.modelProvider === "ollama"
       ? "AI model"
       : "Rules fallback";
   const wrapper = document.createElement("div");

@@ -1,6 +1,5 @@
 node_modules/
 .env
-nvidia-env.txt
 .DS_Store
 Thumbs.db
 *.log
