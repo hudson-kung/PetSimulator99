@@ -33,7 +33,6 @@ const elements = {
   prevValues: document.querySelector("#prevValues"),
   nextValues: document.querySelector("#nextValues"),
   valuePageInfo: document.querySelector("#valuePageInfo"),
-  modelStatus: document.querySelector("#modelStatus"),
   assistantForm: document.querySelector("#assistantForm"),
   assistantInput: document.querySelector("#assistantInput"),
   assistantMessages: document.querySelector("#assistantMessages")
@@ -68,7 +67,6 @@ elements.nextValues.addEventListener("click", () => {
 elements.assistantForm.addEventListener("submit", askAssistant);
 
 loadValueStats();
-loadModelStatus();
 const initialPage = pageFromPath(location.pathname);
 showPage(initialPage);
 if (initialPage === "values") {
@@ -148,52 +146,9 @@ function showPage(pageName) {
     return;
   }
 
-  if (pageName === "assistant") {
-    loadModelStatus();
-  }
-
   document.title = pageName === "home"
     ? "Pet Simulator Tools"
     : `${pageName[0].toUpperCase()}${pageName.slice(1)} | Pet Simulator Tools`;
-}
-
-async function loadModelStatus() {
-  if (!elements.modelStatus) return;
-
-  elements.modelStatus.className = "model-status";
-  elements.modelStatus.textContent = "Checking model...";
-
-  try {
-    const response = await fetch("/api/model-status");
-    const payload = await response.json();
-    if (!response.ok || !payload.ok) {
-      throw new Error(payload.detail || payload.message || "Model check failed");
-    }
-
-    const activeProvider = payload.providers?.find((provider) => provider.id === payload.active);
-    if (activeProvider) {
-      elements.modelStatus.innerHTML = `
-        <span>Model</span>
-        <strong>${escapeHtml(activeProvider.label)}</strong>
-        <small>${escapeHtml(activeProvider.model)}</small>
-      `;
-      elements.modelStatus.classList.add("ready");
-      return;
-    }
-
-    elements.modelStatus.innerHTML = `
-      <span>Model</span>
-      <strong>Rules fallback</strong>
-    `;
-    elements.modelStatus.classList.add("warning");
-  } catch (error) {
-    elements.modelStatus.innerHTML = `
-      <span>Model</span>
-      <strong>Status unavailable</strong>
-      <small>Refresh the page in a minute.</small>
-    `;
-    elements.modelStatus.classList.add("warning");
-  }
 }
 
 async function askAssistant(event) {
@@ -233,16 +188,12 @@ function appendAssistantMessage(role, text) {
 }
 
 function appendAssistantResult(payload) {
-  const providerLabel = payload.modelProvider === "ollama"
-      ? "AI model"
-      : "Rules fallback";
   const wrapper = document.createElement("div");
   wrapper.className = "assistant-message bot";
   wrapper.innerHTML = `
     <div>${escapeHtml(payload.answer)}</div>
     ${payload.historyUrl ? `<a class="assistant-link" href="${payload.historyUrl}">Open chart</a>` : ""}
     ${payload.cards?.length ? `<div class="assistant-cards">${payload.cards.map(renderAssistantCard).join("")}</div>` : ""}
-    <div class="assistant-provider">Answered by ${escapeHtml(providerLabel)}</div>
   `;
   wrapper.querySelectorAll("a").forEach((link) => {
     link.addEventListener("click", (event) => {

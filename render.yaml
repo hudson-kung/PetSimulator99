@@ -7,4 +7,4 @@ services:
     startCommand: npm start
     envVars:
       - key: ASSISTANT_MODEL_PROVIDER
-        value: rules
+        value: auto

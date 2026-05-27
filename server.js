@@ -375,7 +375,7 @@ async function getValuesWithImages() {
 
 function cleanAssistantQuery(message) {
   return normalizeText(message)
-    .replace(/\b(yo|i|my|mean|found|find|should|buy|purchase|worth|deal|booth|seller|selling|what|are|is|the|some|that|have|to|go|and|value|values|rap|price|demand|of|for|a|an|how|much|worth|tell|me|about|please|show|does|it|cost|stock|chart|history|trend|current|past|future|expected|expect|predicted|predict|prediction|under|below|less|budget)\b/g, " ")
+    .replace(/\b(yo|i|my|mean|found|find|should|buy|purchase|worth|deal|good|booth|seller|selling|what|are|is|the|some|that|have|to|go|and|value|values|rap|price|demand|of|for|a|an|how|much|worth|tell|me|about|please|show|does|it|cost|stock|chart|history|trend|current|past|future|expected|expect|predicted|predict|prediction|under|below|less|budget|diamonds|gems)\b/g, " ")
     .replace(/\b\d+(?:\.\d+)?\s*(?:k|m|b|t)?\b/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -388,7 +388,9 @@ const assistantIntentWords = [
   "mutation", "mutations", "variant", "variants", "history", "trend", "chart",
   "stock", "rising", "falling", "up", "down", "found", "buy", "should",
   "deal", "booth", "profit", "skip", "increase", "under", "below", "less",
-  "budget", "mean", "my", "demand"
+  "budget", "mean", "my", "demand", "good", "bad", "overpay", "flip", "rap",
+  "explain", "help", "work", "use", "live", "server", "servers", "egg", "eggs",
+  "exclusive", "exclusives", "charm", "enchant", "diamonds", "gems"
 ];
 
 const assistantTypoAliases = new Map(Object.entries({
@@ -399,18 +401,56 @@ const assistantTypoAliases = new Map(Object.entries({
   cheepest: "cheapest",
   chepest: "cheapest",
   cheepst: "cheapest",
+  wats: "what",
+  wat: "what",
+  whats: "what",
+  whas: "what",
+  teh: "the",
+  taht: "that",
+  valuse: "values",
+  vlaue: "value",
+  vaule: "value",
   titnic: "titanic",
   titnics: "titanics",
   titanicc: "titanic",
+  titanc: "titanic",
   hug: "huge",
   huges: "huges",
   valeu: "value",
   valu: "value",
+  predic: "predict",
+  predit: "predict",
+  prediter: "predictor",
+  preditcion: "prediction",
+  predition: "prediction",
+  futre: "future",
+  histroy: "history",
+  histry: "history",
   mutaton: "mutation",
   mutatons: "mutations",
+  mutaion: "mutation",
+  varient: "variant",
+  varients: "variants",
   shniy: "shiny",
   goldn: "golden",
-  rainbo: "rainbow"
+  rainbo: "rainbow",
+  reglar: "regular",
+  regulars: "regular",
+  basketbal: "basketball",
+  corgy: "corgi",
+  elefant: "elephant",
+  elphant: "elephant",
+  computr: "computer",
+  exclusiv: "exclusive",
+  exclsuive: "exclusive",
+  enchnt: "enchant",
+  dimonds: "diamonds",
+  diamnds: "diamonds",
+  gemms: "gems",
+  shuld: "should",
+  gud: "good",
+  goood: "good",
+  buuy: "buy"
 }));
 
 function levenshtein(a, b) {
@@ -477,6 +517,19 @@ function correctAssistantMessage(message, items) {
   });
 
   const corrected = correctedWords.join(" ");
+  return {
+    corrected,
+    didCorrect: corrected !== normalized
+  };
+}
+
+function correctKnownAssistantAliases(message) {
+  const normalized = normalizeText(message);
+  const corrected = normalized
+    .split(" ")
+    .map((word) => assistantTypoAliases.get(word) || word)
+    .join(" ");
+
   return {
     corrected,
     didCorrect: corrected !== normalized
@@ -550,6 +603,52 @@ function parseDiamondAmount(message) {
   return Math.round(amount * multiplier);
 }
 
+function answerGeneralAssistantQuestion(normalized) {
+  if (/\b(hi|hello|hey|yo)\b/.test(normalized) && normalized.split(" ").length <= 4) {
+    return {
+      answer: "Yo. Ask me for an item value, a demand check, a good deal check, cheap Huges/Titanics, mutations, or what looks like it might rise.",
+      cards: []
+    };
+  }
+
+  if (/\b(what|wat|wats|explain|mean)\b/.test(normalized) && /\brap\b/.test(normalized)) {
+    return {
+      answer: "RAP means Recent Average Price. It is the average recent sale value, so use it as a guide, not a perfect price. A good snipe is usually meaningfully under RAP and on an item with decent demand.",
+      cards: []
+    };
+  }
+
+  if (/\b(what|explain|mean|how)\b/.test(normalized) && /\bdemand\b/.test(normalized) && !/\bhuge|titanic|cat|dog|egg|charm|enchant\b/.test(normalized)) {
+    return {
+      answer: "Demand is how easy an item is to sell. In this app it is estimated from item type, rarity, RAP size, and item category because BIG Games does not publish an official live demand score.",
+      cards: []
+    };
+  }
+
+  if (/\b(how|what|explain|help)\b/.test(normalized) && /\b(use|work|deal|snipe|sniper|find)\b/.test(normalized)) {
+    return {
+      answer: "Use it like this: search the item, compare the booth price to RAP, check demand, then open the chart if you care about trend. Under RAP is not always good; low demand items can be hard to flip.",
+      cards: []
+    };
+  }
+
+  if (/\b(live|server|servers|booth|sales|sale)\b/.test(normalized) && /\b(check|scan|track|see|prices|price)\b/.test(normalized)) {
+    return {
+      answer: "Roblox does not expose live Trading Plaza booth prices through a normal web API. This app can help with values and server joining, but you still need to inspect booth prices in-game.",
+      cards: []
+    };
+  }
+
+  if (/\b(prediction|predict|future|forecast|expected)\b/.test(normalized) && /\b(how|work|real|accurate|explain)\b/.test(normalized)) {
+    return {
+      answer: "Predictions are trend estimates from recent RAP history. They are useful for spotting momentum, but they are not guaranteed because updates, hype, and supply changes can flip prices fast.",
+      cards: []
+    };
+  }
+
+  return null;
+}
+
 function buildModelPrompt(message, result) {
   const cards = (result.cards || []).slice(0, 8).map((item) => ({
     name: item.name,
@@ -601,78 +700,9 @@ async function askOllama(message, result) {
   return payload?.message?.content?.trim() || "";
 }
 
-async function getOllamaModelStatus() {
-  try {
-    const payload = await fetchJsonWithTimeout(`${OLLAMA_URL}/api/tags`, {
-      headers: { "Accept": "application/json" }
-    }, 1500);
-    const models = Array.isArray(payload.models)
-      ? payload.models.map((model) => model.name).filter(Boolean)
-      : [];
-
-    return {
-      id: "ollama",
-      label: "Ollama",
-      configured: true,
-      available: true,
-      model: OLLAMA_MODEL,
-      url: OLLAMA_URL,
-      models
-    };
-  } catch (error) {
-    return {
-      id: "ollama",
-      label: "Ollama",
-      configured: true,
-      available: false,
-      model: OLLAMA_MODEL,
-      url: OLLAMA_URL,
-      message: "Ollama is not reachable from this server."
-    };
-  }
-}
-
-async function getAssistantModelStatus() {
-  const shouldCheckOllama = ASSISTANT_MODEL_PROVIDER === "ollama" || ASSISTANT_MODEL_PROVIDER === "auto";
-  const ollama = shouldCheckOllama ? await getOllamaModelStatus() : null;
-  let active = "rules";
-
-  if (ASSISTANT_MODEL_PROVIDER === "ollama") {
-    active = ollama?.available ? "ollama" : "rules";
-  } else if (ASSISTANT_MODEL_PROVIDER === "rules") {
-    active = "rules";
-  } else {
-    active = ollama?.available ? "ollama" : "rules";
-  }
-
-  const providers = [];
-  if (ollama?.available || ASSISTANT_MODEL_PROVIDER === "ollama") {
-    providers.push({
-      id: "ollama",
-      label: "Local model",
-      configured: Boolean(ollama?.available),
-      available: Boolean(ollama?.available),
-      model: OLLAMA_MODEL,
-      models: ollama?.models || []
-    });
-  }
-
-  return {
-    mode: ASSISTANT_MODEL_PROVIDER,
-    active,
-    providers,
-    fallback: {
-      id: "rules",
-      label: "Rules fallback",
-      available: true,
-      message: "The value assistant still works, but answers are generated without an AI model."
-    }
-  };
-}
-
 async function improveAssistantAnswer(message, result) {
   if (ASSISTANT_MODEL_PROVIDER === "rules") {
-    return { ...result, modelProvider: "rules" };
+    return result;
   }
 
   const providers = ASSISTANT_MODEL_PROVIDER === "ollama" || ASSISTANT_MODEL_PROVIDER === "auto"
@@ -686,8 +716,7 @@ async function improveAssistantAnswer(message, result) {
       if (answer) {
         return {
           ...result,
-          answer,
-          modelProvider: provider
+          answer
         };
       }
     } catch {
@@ -695,7 +724,7 @@ async function improveAssistantAnswer(message, result) {
     }
   }
 
-  return { ...result, modelProvider: "rules" };
+  return result;
 }
 
 function itemChartUrl(item) {
@@ -750,19 +779,36 @@ async function findRisingRegularPets(items, prefix, limit, maxBudget = null) {
 
 async function answerValueQuestion(message) {
   const text = String(message || "").trim();
+  const basicCorrection = correctKnownAssistantAliases(text);
+  const basicGeneralAnswer = answerGeneralAssistantQuestion(basicCorrection.corrected);
+  if (basicGeneralAnswer) {
+    return {
+      ...basicGeneralAnswer,
+      answer: `${basicCorrection.didCorrect ? `I read that as "${basicCorrection.corrected}". ` : ""}${basicGeneralAnswer.answer}`
+    };
+  }
+
   const valuesResult = await getValuesWithImages();
   const correction = correctAssistantMessage(text, valuesResult.items);
   const normalized = correction.corrected;
+  const generalAnswer = answerGeneralAssistantQuestion(normalized);
+  if (generalAnswer) {
+    return {
+      ...generalAnswer,
+      answer: `${correction.didCorrect ? `I read that as "${normalized}". ` : ""}${generalAnswer.answer}`
+    };
+  }
+
   const wantsCheapest = /\b(cheap|cheapest|lowest|least expensive|low)\b/.test(normalized);
   const wantsExpensive = /\b(most expensive|highest|top|best)\b/.test(normalized);
   const wantsHuge = /\bhuge|huges\b/.test(normalized);
   const wantsTitanic = /\btitanic|titanics\b/.test(normalized);
   const wantsSpecificMutation = /\b(golden|rainbow|shiny|chroma)\b/.test(normalized);
-  const wantsRisingList = /\b(expected|expect|future|predict|prediction|rise|rising|increase|up)\b/.test(normalized) && /\b(some|which|what|list|values|pets|huges|titanics)\b/.test(normalized);
+  const wantsRisingList = /\b(expected|expect|future|predict|prediction|rise|rising|increase|up|forecast)\b/.test(normalized) && /\b(some|which|what|list|values|pets|huges|titanics|under|below|budget)\b/.test(normalized);
   const wantsDemand = /\bdemand\b/.test(normalized);
   const offeredPrice = parseDiamondAmount(text);
   const wantsBudgetFilter = offeredPrice && /\b(under|below|less|budget)\b/.test(normalized);
-  const wantsDealCheck = offeredPrice && /\b(should|buy|deal|profit|worth|found|booth|seller|selling)\b/.test(normalized);
+  const wantsDealCheck = offeredPrice && /\b(should|buy|deal|profit|worth|found|booth|seller|selling|good|bad|snipe|flip|cop|overpay)\b/.test(normalized);
   const requestedLimit = Math.max(1, Math.min(Number(normalized.match(/\btop\s+(\d+)\b/)?.[1] || normalized.match(/\b(\d+)\b/)?.[1] || 8), 20));
 
   if ((wantsRisingList && (wantsHuge || wantsTitanic)) || wantsBudgetFilter) {
@@ -824,7 +870,7 @@ async function answerValueQuestion(message) {
 
   const query = cleanAssistantQuery(normalized) || normalized;
   const baseQuery = query
-    .replace(/\b(cheap|cheapest|lowest|least expensive|low|regular|golden|rainbow|shiny|stock|chart|history|trend|current|past|future|value|values|rap|price|demand|and|yo|i|my|mean|found|find|should|buy|purchase|worth|deal|booth|seller|selling|profit|skip|under|below|less|budget|expected|expect|predicted|predict|prediction)\b/g, " ")
+    .replace(/\b(cheap|cheapest|lowest|least expensive|low|regular|golden|rainbow|shiny|stock|chart|history|trend|current|past|future|value|values|rap|price|demand|and|yo|i|my|mean|found|find|should|buy|purchase|worth|deal|good|bad|booth|seller|selling|profit|skip|under|below|less|budget|expected|expect|predicted|predict|prediction|diamonds|gems|snipe|flip|cop|overpay)\b/g, " ")
     .replace(/\b\d+(?:\.\d+)?\s*(?:k|m|b|t)?\b/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -1307,19 +1353,6 @@ const server = http.createServer(async (req, res) => {
       sendJson(res, 502, {
         ok: false,
         message: "The value assistant could not answer right now.",
-        detail: error.message
-      });
-    }
-    return;
-  }
-
-  if (url.pathname === "/api/model-status") {
-    try {
-      sendJson(res, 200, { ok: true, ...(await getAssistantModelStatus()) });
-    } catch (error) {
-      sendJson(res, 502, {
-        ok: false,
-        message: "Could not check model status right now.",
         detail: error.message
       });
     }
