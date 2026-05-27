@@ -184,7 +184,6 @@ async function loadModelStatus() {
     elements.modelStatus.innerHTML = `
       <span>Model</span>
       <strong>Rules fallback</strong>
-      <small>No AI model is connected.</small>
     `;
     elements.modelStatus.classList.add("warning");
   } catch (error) {
