@@ -165,6 +165,42 @@ h2 {
   margin-top: 24px;
 }
 
+.creator-credit {
+  display: inline-grid;
+  grid-template-columns: 56px auto;
+  gap: 12px;
+  align-items: center;
+  margin-top: 18px;
+  padding: 10px 14px 10px 10px;
+  border: 1px solid rgba(79, 214, 164, 0.3);
+  border-radius: 8px;
+  background: rgba(24, 29, 28, 0.72);
+}
+
+.creator-credit img {
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: #fff;
+}
+
+.creator-credit span,
+.creator-credit strong {
+  display: block;
+}
+
+.creator-credit span {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.creator-credit strong {
+  margin-top: 2px;
+  color: var(--text);
+  font-size: 1.18rem;
+}
+
 .cta {
   display: inline-flex;
   align-items: center;
