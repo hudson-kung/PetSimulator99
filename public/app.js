@@ -143,7 +143,7 @@ function showPage(pageName) {
       navigateTo("/values");
       return;
     }
-    document.title = `${petName} | PS99 Server Sniper`;
+    document.title = `${petName} | Pet Simulator Tools`;
     loadPetDetail(petName);
     return;
   }
@@ -153,8 +153,8 @@ function showPage(pageName) {
   }
 
   document.title = pageName === "home"
-    ? "PS99 Server Sniper"
-    : `${pageName[0].toUpperCase()}${pageName.slice(1)} | PS99 Server Sniper`;
+    ? "Pet Simulator Tools"
+    : `${pageName[0].toUpperCase()}${pageName.slice(1)} | Pet Simulator Tools`;
 }
 
 async function loadModelStatus() {
@@ -204,7 +204,7 @@ async function askAssistant(event) {
 
   appendAssistantMessage("user", message);
   elements.assistantInput.value = "";
-  const loading = appendAssistantMessage("bot", "Checking PS99 values...");
+  const loading = appendAssistantMessage("bot", "Checking values...");
 
   try {
     const response = await fetch("/api/assistant", {

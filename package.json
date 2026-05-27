@@ -1,7 +1,7 @@
 {
-  "name": "ps99-server-sniper",
+  "name": "pet-simulator-tools",
   "version": "1.0.0",
-  "description": "A small PS99 Trading Plaza server scout and deal calculator.",
+  "description": "A Pet Simulator trading toolkit for values, history, and servers.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

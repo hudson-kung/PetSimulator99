@@ -1,6 +1,6 @@
-# PS99 Sniper
+# Pet Simulator Tools
 
-A small local web app for checking Pet Simulator 99 RAP values, price history, future value estimates, and Roblox public servers.
+A small web app for checking Pet Simulator RAP values, price history, future value estimates, and Roblox public servers.
 
 ## Run
 

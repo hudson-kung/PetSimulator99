@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: ps99-sniper
+    name: pet-simulator-tools
     env: node
     plan: free
     buildCommand: npm install

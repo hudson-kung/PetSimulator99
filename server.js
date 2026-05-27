@@ -245,7 +245,7 @@ async function fetchRapValues() {
       response = await fetch(PS99_RAP_URL, {
         headers: {
           "Accept": "application/json",
-          "User-Agent": "PS99ServerSniper/1.0"
+          "User-Agent": "PetSimulatorTools/1.0"
         },
         signal: controller.signal
       });
@@ -281,7 +281,7 @@ async function fetchCollectionMetadata(collectionName, label) {
   const response = await fetch(`https://ps99.biggamesapi.io/api/collection/${collectionName}`, {
     headers: {
       "Accept": "application/json",
-      "User-Agent": "PS99ServerSniper/1.0"
+      "User-Agent": "PetSimulatorTools/1.0"
     }
   });
 
@@ -563,7 +563,7 @@ function buildModelPrompt(message, result) {
     {
       role: "system",
       content: [
-        "You are the PS99 Sniper assistant inside a local web app.",
+        "You are the Pet Simulator Tools value assistant inside a web app.",
         "Answer casually and directly.",
         "Use only the provided RAP/value data. Do not invent live server prices, demand, or guarantees.",
         "If demand appears, call it estimated demand.",
@@ -965,7 +965,7 @@ async function fetchPs99RapSearch() {
   const response = await fetch(`${PS99RAP_BASE_URL}/api/search`, {
     headers: {
       "Accept": "application/json",
-      "User-Agent": "PS99ServerSniper/1.0"
+      "User-Agent": "PetSimulatorTools/1.0"
     }
   });
 
@@ -992,7 +992,7 @@ async function fetchRapHistoryByName(name) {
   const response = await fetch(`${PS99RAP_BASE_URL}/api/item/${encodeURIComponent(id)}/rap_history`, {
     headers: {
       "Accept": "application/json",
-      "User-Agent": "PS99ServerSniper/1.0"
+      "User-Agent": "PetSimulatorTools/1.0"
     }
   });
 
@@ -1042,7 +1042,7 @@ async function fetchServers(placeId, requestedPages) {
         response = await fetch(url, {
           headers: {
             "Accept": "application/json",
-            "User-Agent": "PS99ServerSniper/1.0"
+            "User-Agent": "PetSimulatorTools/1.0"
           },
           signal: controller.signal
         });
@@ -1362,5 +1362,5 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`PS99 Server Sniper running at http://localhost:${PORT}`);
+  console.log(`Pet Simulator Tools running at http://localhost:${PORT}`);
 });

@@ -1,16 +1,17 @@
 :root {
   color-scheme: dark;
-  --bg: #101313;
-  --panel: #181d1c;
-  --panel-strong: #202826;
-  --line: #31403c;
-  --text: #f2f7f4;
-  --muted: #a9b7b2;
-  --accent: #4fd6a4;
-  --accent-strong: #13b880;
+  --bg: #0d1213;
+  --panel: #151d1d;
+  --panel-strong: #1d2928;
+  --line: #2d403d;
+  --text: #f5fbf8;
+  --muted: #a9b9b4;
+  --accent: #53e0aa;
+  --accent-strong: #16bd88;
+  --aqua: #4fc3e6;
   --warn: #ffcf66;
   --bad: #ff7c7c;
-  --shadow: 0 18px 55px rgba(0, 0, 0, 0.32);
+  --shadow: 0 18px 55px rgba(0, 0, 0, 0.36);
 }
 
 * {
@@ -21,8 +22,9 @@ body {
   margin: 0;
   min-height: 100vh;
   background:
-    linear-gradient(120deg, rgba(79, 214, 164, 0.08), transparent 32%),
-    linear-gradient(270deg, rgba(255, 207, 102, 0.08), transparent 26%),
+    radial-gradient(circle at 18% 12%, rgba(83, 224, 170, 0.16), transparent 28%),
+    radial-gradient(circle at 82% 0%, rgba(79, 195, 230, 0.1), transparent 24%),
+    linear-gradient(180deg, rgba(255, 207, 102, 0.035), transparent 35%),
     var(--bg);
   color: var(--text);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -53,33 +55,29 @@ select {
   justify-content: space-between;
   gap: 20px;
   width: 100%;
-  min-height: 66px;
-  padding: 12px max(16px, calc((100vw - 1280px) / 2 + 16px));
-  border-bottom: 1px solid rgba(49, 64, 60, 0.8);
-  background: rgba(16, 19, 19, 0.88);
-  backdrop-filter: blur(16px);
+  min-height: 72px;
+  padding: 14px max(16px, calc((100vw - 1280px) / 2 + 16px));
+  border-bottom: 1px solid rgba(83, 224, 170, 0.16);
+  background: rgba(13, 18, 19, 0.82);
+  backdrop-filter: blur(18px);
 }
 
 .brand {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   color: var(--text);
   font-weight: 900;
+  letter-spacing: 0;
   text-decoration: none;
   white-space: nowrap;
 }
 
 .brand-mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 8px;
-  background: var(--accent);
-  color: #062119;
-  font-size: 0.9rem;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  box-shadow: 0 10px 25px rgba(83, 224, 170, 0.2);
 }
 
 .site-nav nav {
@@ -90,8 +88,9 @@ select {
 
 .site-nav nav a {
   min-height: 38px;
-  padding: 10px 12px;
-  border-radius: 6px;
+  padding: 10px 13px;
+  border: 1px solid transparent;
+  border-radius: 8px;
   color: var(--muted);
   font-size: 0.9rem;
   font-weight: 800;
@@ -99,12 +98,14 @@ select {
 }
 
 .site-nav nav a:hover {
-  background: rgba(79, 214, 164, 0.1);
+  border-color: rgba(83, 224, 170, 0.18);
+  background: rgba(83, 224, 170, 0.1);
   color: var(--text);
 }
 
 .site-nav nav a.active {
-  background: rgba(79, 214, 164, 0.16);
+  border-color: rgba(83, 224, 170, 0.24);
+  background: rgba(83, 224, 170, 0.16);
   color: var(--text);
 }
 
@@ -115,7 +116,7 @@ select {
 .shell {
   width: min(1280px, calc(100% - 32px));
   margin: 0 auto;
-  padding: 28px 0 40px;
+  padding: 34px 0 44px;
 }
 
 .hero {
@@ -124,7 +125,8 @@ select {
   align-items: end;
   gap: 24px;
   min-height: min(520px, calc(100vh - 86px));
-  padding: 48px 0 28px;
+  padding: 58px 0 34px;
+  border-bottom: 1px solid rgba(83, 224, 170, 0.1);
 }
 
 .eyebrow {
@@ -143,7 +145,9 @@ h2 {
 }
 
 h1 {
-  font-size: clamp(2.4rem, 6vw, 5.4rem);
+  max-width: 820px;
+  font-size: clamp(2.8rem, 6.4vw, 6.1rem);
+  letter-spacing: 0;
 }
 
 h2 {
@@ -151,10 +155,10 @@ h2 {
 }
 
 .hero-copy {
-  max-width: 680px;
+  max-width: 720px;
   margin: 14px 0 0;
   color: var(--muted);
-  font-size: 1.05rem;
+  font-size: 1.08rem;
   line-height: 1.55;
 }
 
@@ -172,9 +176,10 @@ h2 {
   align-items: center;
   margin-top: 18px;
   padding: 10px 14px 10px 10px;
-  border: 1px solid rgba(79, 214, 164, 0.3);
+  border: 1px solid rgba(83, 224, 170, 0.28);
   border-radius: 8px;
-  background: rgba(24, 29, 28, 0.72);
+  background: rgba(21, 29, 29, 0.72);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.2);
 }
 
 .creator-credit img {
@@ -207,17 +212,19 @@ h2 {
   justify-content: center;
   min-height: 44px;
   padding: 0 18px;
-  border-radius: 6px;
+  border-radius: 8px;
   text-decoration: none;
   font-weight: 900;
 }
 
 .hero-stat {
-  min-width: 220px;
-  padding: 18px;
-  border: 1px solid var(--line);
+  min-width: 250px;
+  padding: 20px;
+  border: 1px solid rgba(83, 224, 170, 0.2);
   border-radius: 8px;
-  background: rgba(24, 29, 28, 0.75);
+  background:
+    linear-gradient(145deg, rgba(83, 224, 170, 0.14), transparent 52%),
+    rgba(21, 29, 29, 0.78);
   box-shadow: var(--shadow);
 }
 
@@ -241,7 +248,7 @@ h2 {
 .notice {
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(24, 29, 28, 0.86);
+  background: rgba(21, 29, 29, 0.9);
   box-shadow: var(--shadow);
 }
 
@@ -267,7 +274,7 @@ select {
   height: 42px;
   border: 1px solid var(--line);
   border-radius: 6px;
-  background: #111716;
+  background: #101818;
   color: var(--text);
   padding: 0 12px;
   outline: none;
@@ -288,12 +295,12 @@ button {
 }
 
 .primary {
-  background: var(--accent);
+  background: linear-gradient(135deg, var(--accent), var(--aqua));
   color: #062119;
 }
 
 .primary:hover {
-  background: #7ae6bf;
+  filter: brightness(1.08);
 }
 
 .ghost {
@@ -304,6 +311,7 @@ button {
 
 .ghost:hover {
   border-color: var(--accent);
+  background: rgba(83, 224, 170, 0.08);
 }
 
 .notice {
@@ -324,7 +332,7 @@ button {
   min-height: 104px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(24, 29, 28, 0.78);
+  background: rgba(21, 29, 29, 0.82);
   padding: 16px;
   box-shadow: var(--shadow);
 }
